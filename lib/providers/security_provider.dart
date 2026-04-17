@@ -226,7 +226,8 @@ class SecurityProvider extends ChangeNotifier {
   }
 
   /// Disable PIN for a specific user
-  /// CRITICAL: uid MUST match _currentUid
+  /// CRITICAL: Also disables biometrics when PIN is disabled
+  /// uid MUST match _currentUid
   Future<void> disablePinForUser(String uid) async {
     if (_storage == null) {
       debugPrint('[SecurityProvider] ERROR: disablePinForUser called but storage is null');
@@ -240,13 +241,21 @@ class SecurityProvider extends ChangeNotifier {
 
     debugPrint('[SecurityProvider] Disabling PIN for user: $uid (currentUid: $_currentUid)');
     
+    // Disable PIN in storage
     await _storage!.setPinEnabled(uid, false);
+    
+    // CRITICAL: Also disable biometrics when PIN is disabled
+    await _storage!.setBiometricEnabled(uid, false);
+    debugPrint('[SecurityProvider] Disabled biometrics in storage for user: $uid');
     
     // Update in-memory state only if this is the current user
     if (_currentUid == uid) {
       _pinEnabled = false;
+      _biometricEnabled = false;
       _isUnlocked = true;
-      debugPrint('[SecurityProvider] PIN disabled successfully for current user');
+      _failedAttempts = 0;
+      _lockoutUntil = null;
+      debugPrint('[SecurityProvider] PIN and biometrics disabled successfully for current user');
       notifyListeners();
     } else {
       debugPrint(

@@ -62,9 +62,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!_hasNavigated) {
       _hasNavigated = true;
-      final route = security.pinEnabled
-          ? (!security.isUnlocked ? AppRoutes.pinUnlock : AppRoutes.home)
-          : AppRoutes.pinSetup;
+      
+      // Route based on PIN state:
+      // - If PIN is enabled and NOT unlocked -> go to PIN unlock
+      // - Otherwise (PIN disabled OR already unlocked) -> go to HOME
+      // Note: Do NOT go to pinSetup automatically
+      final route = (security.pinEnabled && !security.isUnlocked)
+          ? AppRoutes.pinUnlock
+          : AppRoutes.home;
 
       debugPrint('[SplashScreen] Navigating to: $route');
 

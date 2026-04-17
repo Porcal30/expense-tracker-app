@@ -49,7 +49,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       
       debugPrint('[LoginScreen] Security state loaded. PIN enabled: ${security.pinEnabled}');
-      final route = security.pinEnabled ? AppRoutes.pinUnlock : AppRoutes.pinSetup;
+      
+      // Route based on PIN state:
+      // - If PIN is enabled -> go to PIN unlock (user must unlock with PIN/biometric)
+      // - If PIN is NOT enabled -> go to HOME (no security required)
+      // Note: Do NOT go to pinSetup when PIN is disabled
+      final route = security.pinEnabled ? AppRoutes.pinUnlock : AppRoutes.home;
+      
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.pushReplacementNamed(context, route);
