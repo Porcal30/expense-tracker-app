@@ -1,0 +1,56 @@
+name: expense_tracker_app
+description: "Expense Tracker app built with Flutter, Provider, Firebase, charts, and PIN security."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # Firebase
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.3
+  cloud_firestore: ^5.6.7
+
+  # Local persistence and secure storage
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.2
+
+  # Security - PIN hashing
+  crypto: ^3.0.3
+
+  # Utilities
+  intl: ^0.20.2
+  uuid: ^4.5.1
+
+  # Charts
+  fl_chart: ^0.68.0
+
+  # Biometrics / device security (optional but recommended)
+  local_auth: ^2.3.0
+
+  # Simple animations
+  animations: ^2.0.11
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Add assets here when you create them
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
