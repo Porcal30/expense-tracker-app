@@ -6,12 +6,15 @@ import 'firebase_options.dart';
 import 'app.dart';
 import 'core/services/secure_storage_service.dart';
 import 'data/datasources/auth_remote_datasource.dart';
+import 'data/datasources/budget_remote_datasource.dart';
 import 'data/datasources/category_remote_datasource.dart';
 import 'data/datasources/expense_remote_datasource.dart';
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/budget_repository.dart';
 import 'data/repositories/category_repository.dart';
 import 'data/repositories/expense_repository.dart';
 import 'providers/auth_provider.dart';
+import 'providers/budget_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/expense_provider.dart';
 import 'providers/security_provider.dart';
@@ -30,6 +33,7 @@ void main() async {
         Provider(create: (_) => secureStorageService),
         Provider(create: (_) => ExpenseRemoteDataSource()),
         Provider(create: (_) => CategoryRemoteDataSource()),
+        Provider(create: (_) => BudgetRemoteDataSource()),
         ProxyProvider<CategoryRemoteDataSource, AuthRemoteDataSource>(
           update: (_, categoryDs, p) => AuthRemoteDataSource(categoryDataSource: categoryDs),
         ),
@@ -42,6 +46,9 @@ void main() async {
         ProxyProvider<CategoryRemoteDataSource, CategoryRepository>(
           update: (_, ds, p) => CategoryRepository(ds),
         ),
+        ProxyProvider<BudgetRemoteDataSource, BudgetRepository>(
+          update: (_, ds, p) => BudgetRepository(ds),
+        ),
         ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
           create: (_) => AuthProvider(null),
           update: (_, repo, previous) => previous!..attachRepository(repo),
@@ -53,6 +60,11 @@ void main() async {
         ChangeNotifierProxyProvider<CategoryRepository, CategoryProvider>(
           create: (_) => CategoryProvider(null),
           update: (_, repo, previous) => previous!..attachRepository(repo),
+        ),
+        ChangeNotifierProxyProvider2<BudgetRepository, ExpenseProvider, BudgetProvider>(
+          create: (_) => BudgetProvider(null, null),
+          update: (_, budgetRepo, expenseProvider, previous) =>
+              previous!..attachRepositories(budgetRepo, expenseProvider),
         ),
         ChangeNotifierProxyProvider<SecureStorageService, SecurityProvider>(
           create: (_) => SecurityProvider(null),
