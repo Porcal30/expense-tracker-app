@@ -133,9 +133,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (newValue) {
-      // Try to authenticate first before enabling
+      // ENABLE biometrics: Test biometric authentication first
       try {
-        final result = await security.authenticateWithBiometricsDetailed();
+        // Use the enrollment test method (not the unlock method)
+        // This allows authentication even if biometrics are not yet enabled
+        final result = await security.authenticateForBiometricEnrollment();
         
         if (!mounted) return;
         
@@ -150,13 +152,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           );
         } else {
-          // Show specific error reason
+          // Show specific error reason and keep toggle OFF
           final message = result.userFriendlyMessage ?? 
               'Biometric authentication failed';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(message),
               backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
             ),
           );
         }
@@ -166,11 +169,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SnackBar(
             content: Text('Failed to enable biometric unlock'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }
     } else {
-      // Disable biometric
+      // DISABLE biometrics: Immediately disable without testing
       await security.setBiometricEnabled(false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

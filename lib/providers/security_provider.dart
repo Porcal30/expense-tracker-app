@@ -255,7 +255,50 @@ class SecurityProvider extends ChangeNotifier {
     }
   }
 
-  /// Authenticate using device biometrics
+  /// Test biometric authentication for enrollment/setup
+  /// Used when user tries to ENABLE biometrics for the first time
+  /// Only requires biometrics to be available, not already enabled
+  /// Does NOT unlock the app or modify security state
+  /// Returns BiometricResult with success/error details
+  Future<BiometricResult> authenticateForBiometricEnrollment() async {
+    if (!_biometricAvailable) {
+      return BiometricResult(
+        success: false,
+        errorCode: 'notAvailable',
+        userFriendlyMessage: 'Biometric authentication is not available on this device',
+      );
+    }
+
+    try {
+      _biometricService ??= BiometricService();
+      
+      debugPrint('[SecurityProvider] Testing biometric for enrollment (not unlocking app)');
+      
+      final result = await _biometricService!.authenticateWithBiometrics(
+        reason: 'Enable biometric unlock for your expense tracker',
+        useErrorDialogs: false,
+      );
+
+      debugPrint('[SecurityProvider] Biometric enrollment test: ${result.success ? 'SUCCESS' : 'FAILED'}');
+      
+      // Note: We do NOT set _isUnlocked here - this is just testing biometrics
+      // The actual preference will be saved by the caller after successful result
+      
+      return result;
+    } catch (e) {
+      debugPrint('[SecurityProvider] Biometric enrollment error: $e');
+      return BiometricResult(
+        success: false,
+        errorCode: 'exception',
+        userFriendlyMessage: 'An error occurred during biometric test',
+      );
+    }
+  }
+
+  /// Authenticate using device biometrics for normal unlock
+  /// Used when app is locked and user wants to unlock with biometrics
+  /// Requires biometrics to be both available AND already enabled
+  /// Sets _isUnlocked = true on success
   /// Returns a BiometricResult with detailed error information
   Future<BiometricResult> authenticateWithBiometricsDetailed() async {
     if (!_biometricEnabled || !_biometricAvailable) {
@@ -269,12 +312,15 @@ class SecurityProvider extends ChangeNotifier {
     try {
       _biometricService ??= BiometricService();
       
+      debugPrint('[SecurityProvider] Attempting biometric unlock');
+      
       final result = await _biometricService!.authenticateWithBiometrics(
         reason: 'Unlock your expense tracker',
         useErrorDialogs: false,
       );
 
       if (result.success) {
+        debugPrint('[SecurityProvider] Biometric unlock successful');
         _failedAttempts = 0;
         _lockoutUntil = null;
         _isUnlocked = true;
@@ -283,7 +329,7 @@ class SecurityProvider extends ChangeNotifier {
 
       return result;
     } catch (e) {
-      debugPrint('[SecurityProvider] Biometric error: $e');
+      debugPrint('[SecurityProvider] Biometric unlock error: $e');
       return BiometricResult(
         success: false,
         errorCode: 'exception',
