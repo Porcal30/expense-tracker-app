@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/utils/currency_utils.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../widgets/category_pie_chart_card.dart';
@@ -58,8 +58,7 @@ class ReportsScreen extends StatelessWidget {
                     height: 120,
                     child: ReportSummaryCard(
                       label: 'Today',
-                      value: NumberFormat.currency(symbol: '\$')
-                          .format(totalToday),
+                      value: CurrencyUtils.format(totalToday),
                       backgroundColor: Colors.blue.shade50,
                       textColor: Colors.blue.shade900,
                     ),
@@ -71,8 +70,7 @@ class ReportsScreen extends StatelessWidget {
                     height: 120,
                     child: ReportSummaryCard(
                       label: 'This Month',
-                      value: NumberFormat.currency(symbol: '\$')
-                          .format(totalThisMonth),
+                      value: CurrencyUtils.format(totalThisMonth),
                       backgroundColor: Colors.green.shade50,
                       textColor: Colors.green.shade900,
                     ),

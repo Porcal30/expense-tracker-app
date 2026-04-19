@@ -5,8 +5,10 @@ import '../../core/routes/app_routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/recurring_expense_provider.dart';
 import '../../providers/security_provider.dart';
 import '../pin/pin_setup_screen.dart';
+import '../recurring/recurring_expenses_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -43,11 +45,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final authProvider = context.read<AuthProvider>();
     final expenseProvider = context.read<ExpenseProvider>();
     final categoryProvider = context.read<CategoryProvider>();
+    final recurringExpenseProvider = context.read<RecurringExpenseProvider>();
     final securityProvider = context.read<SecurityProvider>();
 
     await authProvider.logout();
     expenseProvider.clear();
     categoryProvider.clear();
+    recurringExpenseProvider.clear();
     securityProvider.clearInMemoryState();
 
     if (!mounted) return;
@@ -250,6 +254,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Planning',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: ListTile(
+              leading: Icon(
+                Icons.repeat,
+                color: Theme.of(context).primaryColor,
+              ),
+              title: const Text('Recurring Expenses'),
+              subtitle:
+                  const Text('Manage repeating bills and subscriptions'),
+              onTap: () {
+                Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const RecurringExpensesScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(

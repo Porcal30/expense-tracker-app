@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/routes/app_routes.dart';
+import '../../core/utils/currency_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/recurring_expense_provider.dart';
 import '../../screens/expenses/add_edit_expense_screen.dart';
 import '../../widgets/budget_dashboard.dart';
 import '../../widgets/empty_state.dart';
@@ -24,15 +25,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // After first frame so ProxyProviders have attached repositories.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadData();
+    });
   }
 
   Future<void> _loadData() async {
     final auth = context.read<AuthProvider>();
     if (auth.isAuthenticated && auth.user != null) {
-      // Load both monthly and weekly budgets to ensure they're cached
+      final uid = auth.user!.uid;
       final budgetProvider = context.read<BudgetProvider>();
-      await budgetProvider.loadAllBudgets(auth.user!.uid);
+      final recurringProvider = context.read<RecurringExpenseProvider>();
+      await budgetProvider.loadAllBudgets(uid);
+      if (!mounted) return;
+      await recurringProvider.generateDueExpenses(uid);
     }
   }
 
@@ -68,16 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: SummaryCard(
                       title: 'Today',
-                      value: NumberFormat.currency(symbol: '\$')
-                          .format(expenseProvider.totalToday),
+                      value: CurrencyUtils.format(expenseProvider.totalToday),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: SummaryCard(
                       title: 'This Month',
-                      value: NumberFormat.currency(symbol: '\$')
-                          .format(expenseProvider.totalThisMonth),
+                      value: CurrencyUtils.format(expenseProvider.totalThisMonth),
                     ),
                   ),
                 ],

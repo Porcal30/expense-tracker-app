@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../../core/routes/app_routes.dart';
 import '../../core/utils/validators.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/budget_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/recurring_expense_provider.dart';
 import '../../providers/security_provider.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/loading_button.dart';
@@ -43,7 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
       
       expenseProvider.bindExpenses(uid);
       categoryProvider.bindCategories(uid);
-      
+
+      await context.read<BudgetProvider>().loadAllBudgets(uid);
+      if (!mounted) return;
+
+      await context.read<RecurringExpenseProvider>().generateDueExpenses(uid);
+      if (!mounted) return;
+
       // Load security state for the logged-in user
       await security.loadStateForUser(uid);
       if (!mounted) return;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import '../core/utils/currency_utils.dart';
 import '../providers/expense_provider.dart';
 
 class SpendingBarChartCard extends StatelessWidget {
@@ -64,11 +65,13 @@ class SpendingBarChartCard extends StatelessWidget {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 32,
+                        reservedSize: 72,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            '\$${value.toInt()}',
-                            style: const TextStyle(fontSize: 10),
+                            CurrencyUtils.format(value.toDouble()),
+                            style: const TextStyle(fontSize: 9),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
                           );
                         },
                       ),

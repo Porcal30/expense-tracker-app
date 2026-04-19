@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../core/routes/app_routes.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/budget_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/recurring_expense_provider.dart';
 import '../../providers/security_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -49,6 +51,12 @@ class _SplashScreenState extends State<SplashScreen> {
     
     expenses.bindExpenses(uid);
     categories.bindCategories(uid);
+
+    await context.read<BudgetProvider>().loadAllBudgets(uid);
+    if (!mounted) return;
+
+    await context.read<RecurringExpenseProvider>().generateDueExpenses(uid);
+    if (!mounted) return;
 
     // Load security state for the current authenticated user
     // CRITICAL: This sets security._currentUid = uid

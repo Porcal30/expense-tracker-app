@@ -1,41 +1,49 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Expense {
+class RecurringExpense {
   final String id;
   final String userId;
   final String title;
   final double amount;
   final String categoryId;
-  final DateTime date;
   final String? note;
-  /// Present when this expense was created from a recurring template.
-  final String? recurringSourceId;
+  /// One of: `daily`, `weekly`, `monthly`.
+  final String frequency;
+  final DateTime startDate;
+  final DateTime? lastGeneratedDate;
+  final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  Expense({
+  RecurringExpense({
     required this.id,
     required this.userId,
     required this.title,
     required this.amount,
     required this.categoryId,
-    required this.date,
     this.note,
-    this.recurringSourceId,
+    required this.frequency,
+    required this.startDate,
+    this.lastGeneratedDate,
+    required this.isActive,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  factory Expense.fromMap(Map<String, dynamic> map, String id) {
-    return Expense(
+  factory RecurringExpense.fromMap(Map<String, dynamic> map, String id) {
+    return RecurringExpense(
       id: id,
       userId: map['userId'] ?? '',
       title: map['title'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
       categoryId: map['categoryId'] ?? '',
-      date: (map['date'] as Timestamp).toDate(),
-      note: map['note'],
-      recurringSourceId: map['recurringSourceId'] as String?,
+      note: map['note'] as String?,
+      frequency: map['frequency'] ?? 'monthly',
+      startDate: (map['startDate'] as Timestamp).toDate(),
+      lastGeneratedDate: map['lastGeneratedDate'] != null
+          ? (map['lastGeneratedDate'] as Timestamp).toDate()
+          : null,
+      isActive: map['isActive'] ?? true,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
     );
@@ -47,35 +55,42 @@ class Expense {
       'title': title,
       'amount': amount,
       'categoryId': categoryId,
-      'date': Timestamp.fromDate(date),
       'note': note,
-      if (recurringSourceId != null) 'recurringSourceId': recurringSourceId,
+      'frequency': frequency,
+      'startDate': Timestamp.fromDate(startDate),
+      if (lastGeneratedDate != null)
+        'lastGeneratedDate': Timestamp.fromDate(lastGeneratedDate!),
+      'isActive': isActive,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
 
-  Expense copyWith({
+  RecurringExpense copyWith({
     String? id,
     String? userId,
     String? title,
     double? amount,
     String? categoryId,
-    DateTime? date,
     String? note,
-    String? recurringSourceId,
+    String? frequency,
+    DateTime? startDate,
+    DateTime? lastGeneratedDate,
+    bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    return Expense(
+    return RecurringExpense(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       title: title ?? this.title,
       amount: amount ?? this.amount,
       categoryId: categoryId ?? this.categoryId,
-      date: date ?? this.date,
       note: note ?? this.note,
-      recurringSourceId: recurringSourceId ?? this.recurringSourceId,
+      frequency: frequency ?? this.frequency,
+      startDate: startDate ?? this.startDate,
+      lastGeneratedDate: lastGeneratedDate ?? this.lastGeneratedDate,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

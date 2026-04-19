@@ -18,20 +18,33 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
   final _totalBudgetController = TextEditingController();
   final _categoryControllers = <String, TextEditingController>{};
   bool _isSaving = false;
-  late String _selectedPeriodType; // 'monthly' or 'weekly'
+
+  static Widget _pesoPrefix(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 4),
+      child: Align(
+        widthFactor: 1,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '₱',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
-    _selectedPeriodType = context.read<BudgetProvider>().selectedPeriodType;
     _initializeControllers();
     _loadBudgetData();
   }
 
   void _initializeControllers() {
     final categories = context.read<CategoryProvider>().categories;
-    
-    // Create empty controllers for all categories
+
     for (final category in categories) {
       _categoryControllers[category.id] = TextEditingController();
     }
@@ -40,12 +53,10 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
   Future<void> _loadBudgetData() async {
     final auth = context.read<AuthProvider>();
     final budgetProvider = context.read<BudgetProvider>();
-    
+
     if (auth.isAuthenticated && auth.user != null) {
-      // Ensure budget for current period is loaded
       await budgetProvider.loadBudget(auth.user!.uid);
-      
-      // Once loaded, populate the form
+
       if (mounted) {
         _populateFormWithBudget();
       }
@@ -54,15 +65,13 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
 
   void _populateFormWithBudget() {
     final budget = context.read<BudgetProvider>().currentBudget;
-    
-    // Update total budget
+
     if (budget != null) {
       _totalBudgetController.text = budget.totalBudget.toString();
     } else {
       _totalBudgetController.clear();
     }
 
-    // Update category budgets
     for (final entry in _categoryControllers.entries) {
       final categoryId = entry.key;
       final controller = entry.value;
@@ -71,28 +80,21 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
     }
   }
 
-  Future<void> _switchPeriodType(String newPeriodType) async {
-    if (_selectedPeriodType == newPeriodType) return;
+  Future<void> _switchPeriodType(int index) async {
+    final newPeriodType = index == 0 ? 'monthly' : 'weekly';
+    final budgetProvider = context.read<BudgetProvider>();
+    if (budgetProvider.selectedPeriodType == newPeriodType) return;
 
-    // Clear form to avoid confusion
     _totalBudgetController.clear();
     for (final controller in _categoryControllers.values) {
       controller.clear();
     }
 
-    // Update provider to new period type
-    final budgetProvider = context.read<BudgetProvider>();
     final auth = context.read<AuthProvider>();
-    
-    setState(() {
-      _selectedPeriodType = newPeriodType;
-    });
 
-    // Load budget for new period type
     if (auth.isAuthenticated && auth.user != null) {
       await budgetProvider.setPeriodType(newPeriodType, auth.user!.uid);
-      
-      // Populate form with loaded budget
+
       if (mounted) {
         _populateFormWithBudget();
       }
@@ -135,7 +137,6 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
       return;
     }
 
-    // Build category budgets
     final categoryBudgets = <String, double>{};
     for (final entry in _categoryControllers.entries) {
       final amount = double.tryParse(entry.value.text.trim());
@@ -148,14 +149,16 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
 
     try {
       final uid = auth.user!.uid;
-      
+
       debugPrint('[SetBudgetScreen] ======== SAVE BUDGET FLOW START ========');
       debugPrint('[SetBudgetScreen] User UID: $uid');
-      debugPrint('[SetBudgetScreen] Period Type: $_selectedPeriodType');
+      debugPrint(
+        '[SetBudgetScreen] Period Type: ${budgetProvider.selectedPeriodType}',
+      );
       debugPrint('[SetBudgetScreen] User authenticated: ${auth.isAuthenticated}');
       debugPrint('[SetBudgetScreen] Total Budget: $totalBudget');
       debugPrint('[SetBudgetScreen] Category Budgets: $categoryBudgets');
-      
+
       await budgetProvider.saveBudget(uid, totalBudget, categoryBudgets);
 
       if (mounted) {
@@ -167,14 +170,13 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
           ),
         );
 
-        // Pop back to previous screen
         Navigator.pop(context);
       }
     } catch (e) {
       debugPrint('[SetBudgetScreen] ======== SAVE BUDGET FLOW FAILED ========');
       debugPrint('[SetBudgetScreen] Error: $e');
       debugPrint('[SetBudgetScreen] Error type: ${e.runtimeType}');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -203,147 +205,150 @@ class _SetBudgetScreenState extends State<SetBudgetScreen> {
   Widget build(BuildContext context) {
     final categories = context.watch<CategoryProvider>().categories;
     final budgetProvider = context.watch<BudgetProvider>();
-    final friendlyLabel = budgetProvider.currentPeriodDisplayLabel;
+    final periodLabel = budgetProvider.currentPeriodDisplayLabel;
+    final periodType = budgetProvider.selectedPeriodType;
+    final theme = Theme.of(context);
+    final periodIndex = periodType == 'monthly' ? 0 : 1;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Set Budget - $friendlyLabel')),
+      appBar: AppBar(
+        title: const Text('Set Budget'),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Period Type Selector
+            Text(
+              periodLabel,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Budget Period',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      'Budget period',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Text('Monthly'),
-                            selected: _selectedPeriodType == 'monthly',
-                            onSelected: (_isSaving)
-                                ? null
-                                : (selected) => _switchPeriodType('monthly'),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final gap = 8.0;
+                        final segmentWidth = (constraints.maxWidth - gap) / 2;
+                        return ToggleButtons(
+                          borderRadius: BorderRadius.circular(12),
+                          selectedBorderColor: theme.colorScheme.primary,
+                          fillColor: theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.35),
+                          color: theme.colorScheme.onSurface,
+                          selectedColor: theme.colorScheme.onPrimaryContainer,
+                          highlightColor: Colors.transparent,
+                          splashColor:
+                              theme.colorScheme.primary.withValues(alpha: 0.12),
+                          constraints: BoxConstraints(
+                            minWidth: segmentWidth,
+                            maxWidth: segmentWidth,
+                            minHeight: 44,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Text('Weekly'),
-                            selected: _selectedPeriodType == 'weekly',
-                            onSelected: (_isSaving)
-                                ? null
-                                : (selected) => _switchPeriodType('weekly'),
-                          ),
-                        ),
-                      ],
+                          isSelected: [
+                            periodIndex == 0,
+                            periodIndex == 1,
+                          ],
+                          onPressed: _isSaving
+                              ? null
+                              : (i) => _switchPeriodType(i),
+                          children: const [
+                            Text('Monthly'),
+                            Text('Weekly'),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total ${periodType == 'monthly' ? 'monthly' : 'weekly'} budget',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      controller: _totalBudgetController,
+                      label: 'Total budget',
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      enabled: !_isSaving,
+                      prefixIcon: _pesoPrefix(context),
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-
-            // Total Budget Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total ${_selectedPeriodType == 'monthly' ? 'Monthly' : 'Weekly'} Budget',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      friendlyLabel,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                          ),
-                    ),
-                    const SizedBox(height: 12),
-                    AppTextField(
-                      controller: _totalBudgetController,
-                      label: 'Total Budget',
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      enabled: !_isSaving,
-                      prefixIcon: const Icon(Icons.attach_money),
-                    ),
-                  ],
+            if (categories.isNotEmpty) ...[
+              Text(
+                'Category budgets (optional)',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // Category Budgets Section
-            if (categories.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Category Budgets (Optional)',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...categories.map((category) {
-                    final controller = _categoryControllers[category.id] ??
-                        TextEditingController();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                category.name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              AppTextField(
-                                controller: controller,
-                                label: 'Budget for ${category.name}',
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                enabled: !_isSaving,
-                                prefixIcon: const Icon(Icons.attach_money),
-                              ),
-                            ],
+              const SizedBox(height: 12),
+              ...categories.map((category) {
+                final controller = _categoryControllers[category.id] ??
+                    TextEditingController();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category.name,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 10),
+                          AppTextField(
+                            controller: controller,
+                            label: 'Budget for ${category.name}',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            enabled: !_isSaving,
+                            prefixIcon: _pesoPrefix(context),
+                          ),
+                        ],
                       ),
-                    );
-                  }),
-                ],
-              ),
-            const SizedBox(height: 24),
-
-            // Save Button
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
             LoadingButton(
-              label: 'Save Budget',
+              label: 'Save budget',
               isLoading: _isSaving,
               onPressed: _isSaving ? null : _saveBudget,
             ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
 
+import '../core/utils/currency_utils.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
 
@@ -104,7 +104,7 @@ class CategoryPieChartCard extends StatelessWidget {
                       child: Text(categoryName),
                     ),
                     Text(
-                      NumberFormat.currency(symbol: '\$').format(amount),
+                      CurrencyUtils.format(amount),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],

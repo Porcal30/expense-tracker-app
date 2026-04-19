@@ -9,14 +9,17 @@ import 'data/datasources/auth_remote_datasource.dart';
 import 'data/datasources/budget_remote_datasource.dart';
 import 'data/datasources/category_remote_datasource.dart';
 import 'data/datasources/expense_remote_datasource.dart';
+import 'data/datasources/recurring_expense_remote_datasource.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/budget_repository.dart';
 import 'data/repositories/category_repository.dart';
 import 'data/repositories/expense_repository.dart';
+import 'data/repositories/recurring_expense_repository.dart';
 import 'providers/auth_provider.dart';
 import 'providers/budget_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/expense_provider.dart';
+import 'providers/recurring_expense_provider.dart';
 import 'providers/security_provider.dart';
 
 void main() async {
@@ -32,6 +35,7 @@ void main() async {
       providers: [
         Provider(create: (_) => secureStorageService),
         Provider(create: (_) => ExpenseRemoteDataSource()),
+        Provider(create: (_) => RecurringExpenseRemoteDataSource()),
         Provider(create: (_) => CategoryRemoteDataSource()),
         Provider(create: (_) => BudgetRemoteDataSource()),
         ProxyProvider<CategoryRemoteDataSource, AuthRemoteDataSource>(
@@ -42,6 +46,9 @@ void main() async {
         ),
         ProxyProvider<ExpenseRemoteDataSource, ExpenseRepository>(
           update: (_, ds, p) => ExpenseRepository(ds),
+        ),
+        ProxyProvider<RecurringExpenseRemoteDataSource, RecurringExpenseRepository>(
+          update: (_, ds, p) => RecurringExpenseRepository(ds),
         ),
         ProxyProvider<CategoryRemoteDataSource, CategoryRepository>(
           update: (_, ds, p) => CategoryRepository(ds),
@@ -56,6 +63,12 @@ void main() async {
         ChangeNotifierProxyProvider<ExpenseRepository, ExpenseProvider>(
           create: (_) => ExpenseProvider(null),
           update: (_, repo, previous) => previous!..attachRepository(repo),
+        ),
+        ChangeNotifierProxyProvider2<RecurringExpenseRepository, ExpenseRepository,
+            RecurringExpenseProvider>(
+          create: (_) => RecurringExpenseProvider(null, null),
+          update: (_, recurringRepo, expenseRepo, previous) =>
+              previous!..attachRepositories(recurringRepo, expenseRepo),
         ),
         ChangeNotifierProxyProvider<CategoryRepository, CategoryProvider>(
           create: (_) => CategoryProvider(null),

@@ -27,7 +27,12 @@ class Budget {
       totalBudget: (json['totalBudget'] as num?)?.toDouble() ?? 0.0,
       categoryBudgets: Map<String, double>.from(
         (json['categoryBudgets'] as Map?)?.map(
-          (key, value) => MapEntry(key as String, (value as num).toDouble()),
+          (key, value) => MapEntry(
+            key as String,
+            value is num
+                ? value.toDouble()
+                : double.tryParse(value.toString()) ?? 0.0,
+          ),
         ) ?? {},
       ),
     );
