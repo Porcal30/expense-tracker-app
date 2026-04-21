@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 
 import '../core/utils/currency_utils.dart';
 import '../providers/expense_provider.dart';
@@ -15,16 +15,19 @@ class SpendingBarChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final last7Days = expenseProvider.last7DaysTotals();
+    final entries = last7Days.entries.toList();
+
     final maxAmount = last7Days.values.fold<double>(
       0,
       (max, val) => val > max ? val : max,
     );
 
-    // Create bar group data
-    final barGroups = last7Days.entries.toList().asMap().entries.map((e) {
+    const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    final barGroups = entries.asMap().entries.map((e) {
       final index = e.key;
       final entry = e.value;
-      
+
       return BarChartGroupData(
         x: index,
         barRods: [
@@ -32,7 +35,9 @@ class SpendingBarChartCard extends StatelessWidget {
             toY: entry.value,
             color: Colors.blue,
             width: 16,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(4),
+            ),
           ),
         ],
       );
@@ -67,11 +72,14 @@ class SpendingBarChartCard extends StatelessWidget {
                         showTitles: true,
                         reservedSize: 72,
                         getTitlesWidget: (value, meta) {
-                          return Text(
-                            CurrencyUtils.format(value.toDouble()),
-                            style: const TextStyle(fontSize: 9),
-                            maxLines: 1,
-                            overflow: TextOverflow.clip,
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            child: Text(
+                              CurrencyUtils.format(value.toDouble()),
+                              style: const TextStyle(fontSize: 9),
+                              maxLines: 1,
+                              overflow: TextOverflow.clip,
+                            ),
                           );
                         },
                       ),
@@ -79,16 +87,34 @@ class SpendingBarChartCard extends StatelessWidget {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 32,
                         getTitlesWidget: (value, meta) {
                           final index = value.toInt();
-                          if (index < 0 || index >= last7Days.length) {
-                            return const Text('');
+                          if (index < 0 || index >= entries.length) {
+                            return const SizedBox.shrink();
                           }
-                          final key = last7Days.keys.toList()[index];
+
+                          final key = entries[index].key;
                           final parts = key.split('/');
-                          return Text(
-                            'M${parts[0]}/D${parts[1]}',
-                            style: const TextStyle(fontSize: 10),
+
+                          int month = 1;
+                          int day = 1;
+
+                          if (parts.length == 2) {
+                            month = int.tryParse(parts[0]) ?? 1;
+                            day = int.tryParse(parts[1]) ?? 1;
+                          }
+
+                          final now = DateTime.now();
+                          final date = DateTime(now.year, month, day);
+                          final label = weekdayLabels[date.weekday % 7];
+
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            child: Text(
+                              label,
+                              style: const TextStyle(fontSize: 10),
+                            ),
                           );
                         },
                       ),

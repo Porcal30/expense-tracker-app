@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/utils/currency_utils.dart';
 import '../core/utils/period_helper.dart';
 import '../data/models/budget.dart';
+import '../data/models/budget_alert.dart';
 import '../data/repositories/budget_repository.dart';
 import 'expense_provider.dart';
 
@@ -9,14 +11,11 @@ class BudgetProvider extends ChangeNotifier {
   BudgetRepository? _repository;
   ExpenseProvider? _expenseProvider;
 
-  // Current period selection
-  String _selectedPeriodType = 'monthly'; // 'monthly' or 'weekly'
+  String _selectedPeriodType = 'monthly';
 
-  // Loaded budgets
   Budget? _monthlyBudget;
   Budget? _weeklyBudget;
 
-  // Track whether the CURRENT monthly/weekly period has been loaded at least once
   bool _monthlyLoaded = false;
   bool _weeklyLoaded = false;
 
@@ -41,38 +40,27 @@ class BudgetProvider extends ChangeNotifier {
     debugPrint('[BudgetProvider] Repositories attached');
   }
 
-  // ============ GETTERS ============
-
   String get selectedPeriodType => _selectedPeriodType;
-
-  /// True while a Firestore budget fetch is in progress.
   bool get isLoading => _isLoading;
-
   String? get error => _error;
 
   List<Budget> get budgetHistory => List.unmodifiable(_budgetHistory);
-
   bool get isHistoryLoading => _isHistoryLoading;
-
   String? get historyError => _historyError;
 
   bool get wasAutoCopied => _wasAutoCopied;
-
   String? get autoCopiedFromPeriodId => _autoCopiedFromPeriodId;
 
-  /// Current budget based on selected period type
   Budget? get currentBudget {
     return _selectedPeriodType == 'monthly' ? _monthlyBudget : _weeklyBudget;
   }
 
   bool get hasBudget => currentBudget != null;
 
-  /// True only after the current selected period has actually finished loading.
   bool get hasLoadedCurrentPeriod {
     return _selectedPeriodType == 'monthly' ? _monthlyLoaded : _weeklyLoaded;
   }
 
-  /// Get current period ID based on selected type
   String get currentPeriodId {
     if (_selectedPeriodType == 'monthly') {
       return PeriodHelper.currentMonthPeriodId();
@@ -81,20 +69,16 @@ class BudgetProvider extends ChangeNotifier {
     }
   }
 
-  /// Get human-readable label for current period
   String get currentPeriodLabel =>
       PeriodHelper.getPeriodLabel(_selectedPeriodType, currentPeriodId);
 
-  /// Friendly UI label
   String get currentPeriodDisplayLabel =>
       PeriodHelper.getFriendlyPeriodLabel(_selectedPeriodType);
 
   String get currentBudgetTitle => currentPeriodDisplayLabel;
 
-  /// Total budget amount for current period
   double get totalBudget => currentBudget?.totalBudget ?? 0.0;
 
-  /// Total spent in current period
   double get totalSpent {
     if (_expenseProvider == null) return 0.0;
 
@@ -109,19 +93,15 @@ class BudgetProvider extends ChangeNotifier {
         .fold<double>(0.0, (sum, expense) => sum + expense.amount);
   }
 
-  /// Remaining budget
   double get remainingBudget =>
       (totalBudget - totalSpent).clamp(0.0, double.infinity);
 
-  /// Clamped percentage for progress bars
   double get budgetPercentage {
     if (totalBudget == 0.0) return 0.0;
     return (totalSpent / totalBudget).clamp(0.0, 1.0);
   }
 
   bool get isOverBudget => totalSpent > totalBudget;
-
-  // ============ CATEGORY METHODS ============
 
   double getCategoryBudget(String categoryId) {
     return currentBudget?.categoryBudgets[categoryId] ?? 0.0;
@@ -154,7 +134,6 @@ class BudgetProvider extends ChangeNotifier {
     return getCategorySpent(categoryId) > getCategoryBudget(categoryId);
   }
 
-  /// Total expense amount in [budget]'s period (for history and analytics).
   double getTotalSpentForBudget(Budget budget) {
     if (_expenseProvider == null) return 0.0;
 
@@ -169,13 +148,114 @@ class BudgetProvider extends ChangeNotifier {
         .fold<double>(0.0, (sum, expense) => sum + expense.amount);
   }
 
-  /// Remaining amount for [budget] (negative when over budget).
   double getRemainingForBudget(Budget budget) {
     return budget.totalBudget - getTotalSpentForBudget(budget);
   }
 
   bool isOverBudgetFor(Budget budget) {
     return getTotalSpentForBudget(budget) > budget.totalBudget;
+  }
+
+  BudgetAlert? get overallBudgetAlert {
+    if (currentBudget == null || totalBudget == 0.0) return null;
+
+    final percent = budgetPercentage;
+    final overAmount = totalSpent - totalBudget;
+    final isOver = overAmount > 0;
+
+    if (isOver) {
+      return BudgetAlert(
+        message:
+            'You have exceeded your ${currentPeriodDisplayLabel.toLowerCase()} by ${CurrencyUtils.format(overAmount)}.',
+        severity: BudgetAlertSeverity.danger,
+        percentUsed: percent,
+        isOverBudget: true,
+        overAmount: overAmount,
+      );
+    }
+
+    if (percent >= 0.8) {
+      return BudgetAlert(
+        message:
+            'You have used ${(percent * 100).toStringAsFixed(0)}% of your ${currentPeriodDisplayLabel.toLowerCase()}.',
+        severity: BudgetAlertSeverity.warning,
+        percentUsed: percent,
+        isOverBudget: false,
+      );
+    }
+
+    if (percent >= 0.5) {
+      return BudgetAlert(
+        message:
+            'You have used ${(percent * 100).toStringAsFixed(0)}% of your ${currentPeriodDisplayLabel.toLowerCase()}.',
+        severity: BudgetAlertSeverity.info,
+        percentUsed: percent,
+        isOverBudget: false,
+      );
+    }
+
+    return null;
+  }
+
+  List<CategoryBudgetAlert> get categoryAlerts {
+    if (currentBudget == null || _expenseProvider == null) return [];
+
+    final alerts = <CategoryBudgetAlert>[];
+
+    for (final entry in currentBudget!.categoryBudgets.entries) {
+      final categoryId = entry.key;
+      final budgetAmount = entry.value;
+      if (budgetAmount == 0.0) continue;
+
+      final spent = getCategorySpent(categoryId);
+      final rawPercent = budgetAmount > 0 ? (spent / budgetAmount) : 0.0;
+      final clampedPercent = rawPercent.clamp(0.0, 1.0);
+      final overAmount = spent - budgetAmount;
+
+      if (overAmount > 0) {
+        alerts.add(
+          CategoryBudgetAlert(
+            categoryId: categoryId,
+            message: 'Budget exceeded by ${CurrencyUtils.format(overAmount)}.',
+            severity: BudgetAlertSeverity.danger,
+            percentUsed: rawPercent,
+            overAmount: overAmount,
+          ),
+        );
+      } else if (clampedPercent >= 0.8) {
+        alerts.add(
+          CategoryBudgetAlert(
+            categoryId: categoryId,
+            message: 'Budget is at ${(clampedPercent * 100).toStringAsFixed(0)}%.',
+            severity: BudgetAlertSeverity.warning,
+            percentUsed: clampedPercent,
+          ),
+        );
+      } else if (clampedPercent >= 0.5) {
+        alerts.add(
+          CategoryBudgetAlert(
+            categoryId: categoryId,
+            message: 'Budget is at ${(clampedPercent * 100).toStringAsFixed(0)}%.',
+            severity: BudgetAlertSeverity.info,
+            percentUsed: clampedPercent,
+          ),
+        );
+      }
+    }
+
+    alerts.sort((a, b) {
+      final severityOrder = {
+        BudgetAlertSeverity.danger: 3,
+        BudgetAlertSeverity.warning: 2,
+        BudgetAlertSeverity.info: 1,
+      };
+      final aOrder = severityOrder[a.severity] ?? 0;
+      final bOrder = severityOrder[b.severity] ?? 0;
+      if (aOrder != bOrder) return bOrder.compareTo(aOrder);
+      return b.percentUsed.compareTo(a.percentUsed);
+    });
+
+    return alerts;
   }
 
   Future<void> loadBudgetHistory(String uid) async {
@@ -209,8 +289,6 @@ class BudgetProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // ============ LOAD/SAVE METHODS ============
 
   Future<void> setPeriodType(String periodType, String uid) async {
     if (!PeriodHelper.isValidPeriodType(periodType)) {
@@ -562,6 +640,8 @@ class BudgetProvider extends ChangeNotifier {
     _isHistoryLoading = false;
     _historyError = null;
     _selectedPeriodType = 'monthly';
+    _wasAutoCopied = false;
+    _autoCopiedFromPeriodId = null;
     notifyListeners();
   }
 }

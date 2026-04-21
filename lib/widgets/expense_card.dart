@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../core/utils/currency_utils.dart';
 import '../data/models/expense.dart';
 import '../providers/auth_provider.dart';
 import '../providers/category_provider.dart';
@@ -23,16 +23,20 @@ class ExpenseCard extends StatelessWidget {
         onTap: () => AddEditExpenseRoute.navigateToEdit(context, expense),
         child: ListTile(
           title: Text(expense.title),
-          subtitle: Text('${category?.name ?? 'Unknown'} • ${expense.date.toLocal().toString().split(' ').first}'),
+          subtitle: Text(
+            '${category?.name ?? 'Unknown'} • ${expense.date.toLocal().toString().split(' ').first}',
+          ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(NumberFormat.currency(symbol: '\$').format(expense.amount)),
+              Text(CurrencyUtils.format(expense.amount)),
               const SizedBox(height: 4),
               InkWell(
                 onTap: () async {
-                  await context.read<ExpenseProvider>().deleteExpense(auth.user!.uid, expense.id);
+                  await context
+                      .read<ExpenseProvider>()
+                      .deleteExpense(auth.user!.uid, expense.id);
                 },
                 child: const Icon(Icons.delete, size: 18),
               ),

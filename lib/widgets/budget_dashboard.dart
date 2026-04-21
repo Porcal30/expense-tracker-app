@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/utils/currency_utils.dart';
+import '../data/models/budget_alert.dart';
 import '../providers/auth_provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/category_provider.dart';
@@ -25,6 +26,7 @@ class BudgetDashboard extends StatefulWidget {
 
 class _BudgetDashboardState extends State<BudgetDashboard> {
   bool _loadScheduled = false;
+  bool _showAllCategoryAlerts = false;
 
   void _scheduleBudgetLoadIfNeeded() {
     if (_loadScheduled) return;
@@ -94,6 +96,9 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
 
     if (auth.isAuthenticated && auth.user != null) {
       try {
+        setState(() {
+          _showAllCategoryAlerts = false;
+        });
         await budgetProvider.setPeriodType(newPeriodType, auth.user!.uid);
       } catch (e) {
         if (context.mounted) {
@@ -182,8 +187,8 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
     final textAlign = align == CrossAxisAlignment.end
         ? TextAlign.end
         : align == CrossAxisAlignment.center
-        ? TextAlign.center
-        : TextAlign.start;
+            ? TextAlign.center
+            : TextAlign.start;
 
     return Expanded(
       child: Column(
@@ -211,6 +216,154 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _budgetAlertCard(BuildContext context, BudgetAlert alert) {
+    final theme = Theme.of(context);
+    Color backgroundColor;
+    Color textColor;
+    IconData icon;
+
+    switch (alert.severity) {
+      case BudgetAlertSeverity.info:
+        backgroundColor = Colors.blue.shade50;
+        textColor = Colors.blue.shade900;
+        icon = Icons.info_outline;
+        break;
+      case BudgetAlertSeverity.warning:
+        backgroundColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade900;
+        icon = Icons.warning_amber_rounded;
+        break;
+      case BudgetAlertSeverity.danger:
+        backgroundColor = Colors.red.shade50;
+        textColor = Colors.red.shade900;
+        icon = Icons.error_outline;
+        break;
+    }
+
+    return Card(
+      color: backgroundColor,
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Row(
+          children: [
+            Icon(icon, color: textColor, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                alert.message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: textColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _categoryAlertsSection(
+    BuildContext context,
+    List<CategoryBudgetAlert> alerts,
+    CategoryProvider categoryProvider,
+  ) {
+    final visibleAlerts = _showAllCategoryAlerts ? alerts : alerts.take(2).toList();
+    final remainingCount = alerts.length - visibleAlerts.length;
+    final theme = Theme.of(context);
+
+    Widget buildAlertCard(CategoryBudgetAlert alert) {
+      final category = categoryProvider.getById(alert.categoryId);
+      final categoryName = category?.name ?? 'Unknown category';
+
+      Color backgroundColor;
+      Color textColor;
+      IconData icon;
+
+      switch (alert.severity) {
+        case BudgetAlertSeverity.info:
+          backgroundColor = Colors.blue.shade50;
+          textColor = Colors.blue.shade900;
+          icon = Icons.info_outline;
+          break;
+        case BudgetAlertSeverity.warning:
+          backgroundColor = Colors.orange.shade50;
+          textColor = Colors.orange.shade900;
+          icon = Icons.warning_amber_rounded;
+          break;
+        case BudgetAlertSeverity.danger:
+          backgroundColor = Colors.red.shade50;
+          textColor = Colors.red.shade900;
+          icon = Icons.error_outline;
+          break;
+      }
+
+      return Card(
+        color: backgroundColor,
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(
+            children: [
+              Icon(icon, color: textColor, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '$categoryName: ${alert.message}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Category alerts',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...visibleAlerts.map(buildAlertCard),
+        if (!_showAllCategoryAlerts && remainingCount > 0)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showAllCategoryAlerts = true;
+                });
+              },
+              icon: const Icon(Icons.expand_more),
+              label: Text('+$remainingCount more warning${remainingCount == 1 ? '' : 's'}'),
+            ),
+          ),
+        if (_showAllCategoryAlerts && alerts.length > 2)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showAllCategoryAlerts = false;
+                });
+              },
+              icon: const Icon(Icons.expand_less),
+              label: const Text('Show less'),
+            ),
+          ),
+      ],
     );
   }
 
@@ -340,7 +493,7 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
             if (budgetProvider.wasAutoCopied) ...[
               const SizedBox(height: 12),
               Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
+                color: theme.colorScheme.primaryContainer,
                 margin: EdgeInsets.zero,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -348,8 +501,8 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                     periodType == 'weekly'
                         ? "This week's budget was copied from last week."
                         : "This month's budget was copied from last month.",
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -358,6 +511,18 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
               const SizedBox(height: 16),
             ],
             const SizedBox(height: 16),
+            if (budgetProvider.overallBudgetAlert != null) ...[
+              _budgetAlertCard(context, budgetProvider.overallBudgetAlert!),
+              const SizedBox(height: 16),
+            ],
+            if (budgetProvider.categoryAlerts.isNotEmpty) ...[
+              _categoryAlertsSection(
+                context,
+                budgetProvider.categoryAlerts,
+                categoryProvider,
+              ),
+              const SizedBox(height: 16),
+            ],
             Card(
               margin: EdgeInsets.zero,
               child: Padding(
@@ -456,40 +621,31 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                   ),
                   const SizedBox(height: 12),
                   ...() {
-                    final sorted =
-                        categoryProvider.categories
-                            .where(
-                              (c) => budgetProvider.getCategoryBudget(c.id) > 0,
-                            )
-                            .toList()
-                          ..sort((a, b) {
-                            final ba = budgetProvider.getCategoryBudget(a.id);
-                            final bb = budgetProvider.getCategoryBudget(b.id);
-                            final ra =
-                                budgetProvider.getCategorySpent(a.id) / ba;
-                            final rb =
-                                budgetProvider.getCategorySpent(b.id) / bb;
-                            return rb.compareTo(ra);
-                          });
+                    final sorted = categoryProvider.categories
+                        .where((c) => budgetProvider.getCategoryBudget(c.id) > 0)
+                        .toList()
+                      ..sort((a, b) {
+                        final ba = budgetProvider.getCategoryBudget(a.id);
+                        final bb = budgetProvider.getCategoryBudget(b.id);
+                        final ra = budgetProvider.getCategorySpent(a.id) / ba;
+                        final rb = budgetProvider.getCategorySpent(b.id) / bb;
+                        return rb.compareTo(ra);
+                      });
 
                     return sorted.map((category) {
-                      final categoryBudget = budgetProvider.getCategoryBudget(
-                        category.id,
-                      );
-
-                      final categorySpent = budgetProvider.getCategorySpent(
-                        category.id,
-                      );
+                      final categoryBudget =
+                          budgetProvider.getCategoryBudget(category.id);
+                      final categorySpent =
+                          budgetProvider.getCategorySpent(category.id);
                       final ratio = categoryBudget > 0
                           ? categorySpent / categoryBudget
                           : 0.0;
                       final categoryBarValue = ratio.clamp(0.0, 1.0);
                       final categoryPercentUsed = ratio * 100;
-                      final severity = budgetCategorySeverityColor(
-                        categoryPercentUsed,
-                      );
-                      final isCategoryOverBudget = budgetProvider
-                          .isCategoryBudgetExceeded(category.id);
+                      final severity =
+                          budgetCategorySeverityColor(categoryPercentUsed);
+                      final isCategoryOverBudget =
+                          budgetProvider.isCategoryBudgetExceeded(category.id);
                       final overBy = categorySpent - categoryBudget;
 
                       return Padding(
@@ -508,8 +664,8 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                                         category.name,
                                         style: theme.textTheme.bodyLarge
                                             ?.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -517,11 +673,10 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                                     const SizedBox(width: 8),
                                     Text(
                                       '${categoryPercentUsed.toStringAsFixed(0)}%',
-                                      style: theme.textTheme.labelLarge
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: severity,
-                                          ),
+                                      style: theme.textTheme.labelLarge?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: severity,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -531,9 +686,8 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                                   child: LinearProgressIndicator(
                                     value: categoryBarValue,
                                     minHeight: 8,
-                                    backgroundColor: theme
-                                        .colorScheme
-                                        .surfaceContainerHighest,
+                                    backgroundColor:
+                                        theme.colorScheme.surfaceContainerHighest,
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       severity,
                                     ),
@@ -546,12 +700,10 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                                     Expanded(
                                       child: Text(
                                         '${CurrencyUtils.format(categorySpent)} / ${CurrencyUtils.format(categoryBudget)}',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
-                                            ),
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color:
+                                              theme.colorScheme.onSurfaceVariant,
+                                        ),
                                       ),
                                     ),
                                     if (isCategoryOverBudget) ...[
@@ -566,17 +718,16 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                                             color: severity.withValues(
                                               alpha: 0.14,
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             'Over by ${CurrencyUtils.format(overBy)}',
                                             style: theme.textTheme.labelSmall
                                                 ?.copyWith(
-                                                  color: severity,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
+                                              color: severity,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                             textAlign: TextAlign.end,
                                           ),
                                         ),

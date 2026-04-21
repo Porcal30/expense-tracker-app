@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,12 +7,14 @@ import '../../core/routes/app_routes.dart';
 import '../../core/utils/currency_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/budget_provider.dart';
+import '../../providers/category_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/recurring_expense_provider.dart';
 import '../../screens/expenses/add_edit_expense_screen.dart';
 import '../../widgets/budget_dashboard.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/expense_card.dart';
+import '../../widgets/expense_filter_sheet.dart';
 import '../../widgets/section_header.dart';
 import '../../widgets/summary_card.dart';
 
@@ -22,6 +26,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+
   @override
   void initState() {
     super.initState();
@@ -29,6 +36,36 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadData();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      context.read<ExpenseProvider>().setSearchQuery(value);
+    });
+  }
+
+  Future<void> _openExpenseFilterSheet() async {
+    final expenseProvider = context.read<ExpenseProvider>();
+    final categoryProvider = context.read<CategoryProvider>();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return ExpenseFilterSheet(
+          expenseProvider: expenseProvider,
+          categories: categoryProvider.categories,
+        );
+      },
+    );
   }
 
   Future<void> _loadData() async {
@@ -46,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final expenseProvider = context.watch<ExpenseProvider>();
-    final expenses = expenseProvider.expenses;
+    final expenses = expenseProvider.filteredExpenses;
 
     return Scaffold(
       appBar: AppBar(
@@ -82,7 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: SummaryCard(
                       title: 'This Month',
-                      value: CurrencyUtils.format(expenseProvider.totalThisMonth),
+                      value: CurrencyUtils.format(
+                        expenseProvider.totalThisMonth,
+                      ),
                     ),
                   ),
                 ],
@@ -91,12 +130,87 @@ class _HomeScreenState extends State<HomeScreen> {
               // Budget Dashboard
               BudgetDashboard(),
               const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        decoration: InputDecoration(
+                          hintText: 'Search expenses',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    context
+                                        .read<ExpenseProvider>()
+                                        .setSearchQuery('');
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Material(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      child: IconButton(
+                        icon: const Icon(Icons.filter_alt, color: Colors.white),
+                        onPressed: _openExpenseFilterSheet,
+                        tooltip: 'Filters',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (expenseProvider.hasActiveFilters) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.filter_alt, size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Active filters are applied',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          expenseProvider.resetFilters();
+                          setState(() {});
+                        },
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
               // Expenses section
               expenses.isEmpty
                   ? EmptyState(
                       icon: Icons.wallet_outlined,
-                      title: 'No expenses yet',
-                      message: 'Tap the + button below to add your first expense',
+                      title: expenseProvider.expenses.isEmpty
+                          ? 'No expenses yet'
+                          : 'No expenses match your filters',
+                      message: expenseProvider.expenses.isEmpty
+                          ? 'Tap the + button below to add your first expense'
+                          : 'Try changing or clearing your search and filters.',
                       actionButtonLabel: 'Add Expense',
                       actionButtonOnPressed: () =>
                           AddEditExpenseRoute.navigateToAdd(context),
@@ -128,7 +242,10 @@ class _HomeScreenState extends State<HomeScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Reports'),
-          NavigationDestination(icon: Icon(Icons.category), label: 'Categories'),
+          NavigationDestination(
+            icon: Icon(Icons.category),
+            label: 'Categories',
+          ),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
