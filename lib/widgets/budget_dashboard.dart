@@ -6,7 +6,6 @@ import '../data/models/budget_alert.dart';
 import '../providers/auth_provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/category_provider.dart';
-import '../screens/budget/budget_history_screen.dart';
 import '../screens/budget/set_budget_screen.dart';
 
 /// Color by usage % (0–50 green, 50–80 amber, 80–100 deep orange, >100 red).
@@ -77,11 +76,19 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
     );
   }
 
-  void _openBudgetHistory(BuildContext context) {
-    Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(builder: (_) => const BudgetHistoryScreen()),
-    );
+  String _periodTimeLeftText(String periodType) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (periodType == 'monthly') {
+      final endOfMonth = DateTime(now.year, now.month + 1, 0);
+      final daysLeft = endOfMonth.difference(today).inDays + 1;
+      return '$daysLeft day${daysLeft == 1 ? '' : 's'} left';
+    }
+
+    final endOfWeek = today.add(Duration(days: DateTime.daysPerWeek - now.weekday));
+    final daysLeft = endOfWeek.difference(today).inDays + 1;
+    return '$daysLeft day${daysLeft == 1 ? '' : 's'} left';
   }
 
   Future<void> _switchPeriod(
@@ -347,7 +354,9 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                 });
               },
               icon: const Icon(Icons.expand_more),
-              label: Text('+$remainingCount more warning${remainingCount == 1 ? '' : 's'}'),
+              label: Text(
+                '+$remainingCount more warning${remainingCount == 1 ? '' : 's'}',
+              ),
             ),
           ),
         if (_showAllCategoryAlerts && alerts.length > 2)
@@ -443,6 +452,14 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _periodTimeLeftText(periodType),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       'Create a budget for this period to track spending.',
@@ -453,11 +470,6 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                     FilledButton(
                       onPressed: () => _openSetBudgetScreen(context),
                       child: const Text('Set budget'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: () => _openBudgetHistory(context),
-                      child: const Text('View budget history'),
                     ),
                   ],
                 ),
@@ -534,16 +546,24 @@ class _BudgetDashboardState extends State<BudgetDashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            friendlyLabel,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                friendlyLabel,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _periodTimeLeftText(periodType),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        TextButton(
-                          onPressed: () => _openBudgetHistory(context),
-                          child: const Text('View history'),
                         ),
                         TextButton.icon(
                           onPressed: () => _openSetBudgetScreen(context),

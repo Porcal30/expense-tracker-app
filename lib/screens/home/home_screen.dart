@@ -10,6 +10,7 @@ import '../../providers/budget_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/expense_provider.dart';
 import '../../providers/recurring_expense_provider.dart';
+import '../../screens/budget/budget_history_screen.dart';
 import '../../screens/expenses/add_edit_expense_screen.dart';
 import '../../widgets/budget_dashboard.dart';
 import '../../widgets/empty_state.dart';
@@ -32,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // After first frame so ProxyProviders have attached repositories.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadData();
     });
@@ -50,6 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchDebounce = Timer(const Duration(milliseconds: 300), () {
       context.read<ExpenseProvider>().setSearchQuery(value);
     });
+
+    setState(() {});
   }
 
   Future<void> _openExpenseFilterSheet() async {
@@ -66,6 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+
+    setState(() {});
   }
 
   Future<void> _loadData() async {
@@ -91,15 +95,29 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.history),
+            tooltip: 'Budget history',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const BudgetHistoryScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => AddEditExpenseRoute.navigateToAdd(context),
-        child: const Icon(Icons.add),
-      ),
+
+      floatingActionButton: Padding(
+  padding: const EdgeInsets.only(bottom: 8),
+  child: FloatingActionButton(
+    tooltip: 'Add expense',
+    onPressed: () => AddEditExpenseRoute.navigateToAdd(context),
+    child: const Icon(Icons.add),
+  ),
+),
+
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -126,55 +144,49 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 24),
+
               // Budget Dashboard
-              BudgetDashboard(),
+              const BudgetDashboard(),
+
               const SizedBox(height: 24),
+
+              // Search + Filter (clean UI)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: _onSearchChanged,
-                        decoration: InputDecoration(
-                          hintText: 'Search expenses',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    context
-                                        .read<ExpenseProvider>()
-                                        .setSearchQuery('');
-                                    setState(() {});
-                                  },
-                                )
-                              : null,
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 12,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Search expenses',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _searchController.clear();
+                              context.read<ExpenseProvider>().setSearchQuery('');
+                              setState(() {});
+                            },
                           ),
+                        IconButton(
+                          icon: const Icon(Icons.tune),
+                          onPressed: _openExpenseFilterSheet,
+                          tooltip: 'Filters',
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Material(
-                      color: Theme.of(context).colorScheme.primary,
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      child: IconButton(
-                        icon: const Icon(Icons.filter_alt, color: Colors.white),
-                        onPressed: _openExpenseFilterSheet,
-                        tooltip: 'Filters',
-                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
+
               if (expenseProvider.hasActiveFilters) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -200,8 +212,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
+
               const SizedBox(height: 24),
-              // Expenses section
+
+              // Expenses
               expenses.isEmpty
                   ? EmptyState(
                       icon: Icons.wallet_outlined,
@@ -209,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? 'No expenses yet'
                           : 'No expenses match your filters',
                       message: expenseProvider.expenses.isEmpty
-                          ? 'Tap the + button below to add your first expense'
+                          ? 'Tap the Add Expense button below to add your first expense'
                           : 'Try changing or clearing your search and filters.',
                       actionButtonLabel: 'Add Expense',
                       actionButtonOnPressed: () =>
@@ -218,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SectionHeader(title: 'Recent Expenses'),
+                        const SectionHeader(title: 'Recent Expenses'),
                         ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -232,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+
       bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
         onDestinationSelected: (index) {
