@@ -100,9 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const BudgetHistoryScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const BudgetHistoryScreen()),
               );
             },
           ),
@@ -110,139 +108,156 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       floatingActionButton: Padding(
-  padding: const EdgeInsets.only(bottom: 8),
-  child: FloatingActionButton(
-    tooltip: 'Add expense',
-    onPressed: () => AddEditExpenseRoute.navigateToAdd(context),
-    child: const Icon(Icons.add),
-  ),
-),
+        padding: const EdgeInsets.only(bottom: 8),
+        child: FloatingActionButton(
+          tooltip: 'Add expense',
+          onPressed: () => AddEditExpenseRoute.navigateToAdd(context),
+          child: const Icon(Icons.add),
+        ),
+      ),
 
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Summary cards
-              Row(
-                children: [
-                  Expanded(
-                    child: SummaryCard(
-                      title: 'Today',
-                      value: CurrencyUtils.format(expenseProvider.totalToday),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF081225), Color(0xFF0D1B33)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Summary cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: SummaryCard(
+                        title: 'Today',
+                        value: CurrencyUtils.format(expenseProvider.totalToday),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SummaryCard(
+                        title: 'This Month',
+                        value: CurrencyUtils.format(
+                          expenseProvider.totalThisMonth,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Budget Dashboard
+                const BudgetDashboard(),
+
+                const SizedBox(height: 24),
+
+                // Search + Filter (clean UI)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Search expenses',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_searchController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                _searchController.clear();
+                                context.read<ExpenseProvider>().setSearchQuery(
+                                  '',
+                                );
+                                setState(() {});
+                              },
+                            ),
+                          IconButton(
+                            icon: const Icon(Icons.tune),
+                            onPressed: _openExpenseFilterSheet,
+                            tooltip: 'Filters',
+                          ),
+                        ],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SummaryCard(
-                      title: 'This Month',
-                      value: CurrencyUtils.format(
-                        expenseProvider.totalThisMonth,
-                      ),
+                ),
+
+                if (expenseProvider.hasActiveFilters) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.filter_alt, size: 18),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Active filters are applied',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            expenseProvider.resetFilters();
+                            setState(() {});
+                          },
+                          child: const Text('Clear'),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Budget Dashboard
-              const BudgetDashboard(),
-
-              const SizedBox(height: 24),
-
-              // Search + Filter (clean UI)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Search expenses',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_searchController.text.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              _searchController.clear();
-                              context.read<ExpenseProvider>().setSearchQuery('');
-                              setState(() {});
-                            },
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.tune),
-                          onPressed: _openExpenseFilterSheet,
-                          tooltip: 'Filters',
+                // Expenses
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 420),
+                  switchInCurve: Curves.easeOutCubic,
+                  child: expenses.isEmpty
+                      ? EmptyState(
+                          key: const ValueKey('empty'),
+                          icon: Icons.wallet_outlined,
+                          title: expenseProvider.expenses.isEmpty
+                              ? 'No expenses yet'
+                              : 'No expenses match your filters',
+                          message: expenseProvider.expenses.isEmpty
+                              ? 'Tap the Add Expense button below to add your first expense'
+                              : 'Try changing or clearing your search and filters.',
+                          actionButtonLabel: 'Add Expense',
+                          actionButtonOnPressed: () =>
+                              AddEditExpenseRoute.navigateToAdd(context),
+                        )
+                      : Column(
+                          key: const ValueKey('list'),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SectionHeader(title: 'Recent Expenses'),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: expenses.length,
+                              itemBuilder: (_, index) =>
+                                  ExpenseCard(expense: expenses[index]),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-
-              if (expenseProvider.hasActiveFilters) ...[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.filter_alt, size: 18),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Active filters are applied',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          expenseProvider.resetFilters();
-                          setState(() {});
-                        },
-                        child: const Text('Clear'),
-                      ),
-                    ],
-                  ),
                 ),
               ],
-
-              const SizedBox(height: 24),
-
-              // Expenses
-              expenses.isEmpty
-                  ? EmptyState(
-                      icon: Icons.wallet_outlined,
-                      title: expenseProvider.expenses.isEmpty
-                          ? 'No expenses yet'
-                          : 'No expenses match your filters',
-                      message: expenseProvider.expenses.isEmpty
-                          ? 'Tap the Add Expense button below to add your first expense'
-                          : 'Try changing or clearing your search and filters.',
-                      actionButtonLabel: 'Add Expense',
-                      actionButtonOnPressed: () =>
-                          AddEditExpenseRoute.navigateToAdd(context),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SectionHeader(title: 'Recent Expenses'),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: expenses.length,
-                          itemBuilder: (_, index) =>
-                              ExpenseCard(expense: expenses[index]),
-                        ),
-                      ],
-                    ),
-            ],
+            ),
           ),
         ),
       ),

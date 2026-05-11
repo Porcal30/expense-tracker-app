@@ -16,20 +16,40 @@ class ReportSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: backgroundColor,
+    final bg = backgroundColor ?? Theme.of(context).colorScheme.surface;
+    final fg = textColor ?? Theme.of(context).colorScheme.onSurface;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          colors: [bg.withValues(alpha: 0.95), bg.withValues(alpha: 0.76)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: fg.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: fg.withValues(alpha: 0.16),
+            blurRadius: 16,
+            spreadRadius: -6,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(13),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              label,
+              label.toUpperCase(),
               style: TextStyle(
                 fontSize: 12,
-                color: textColor?.withValues(alpha: 0.7) ?? Colors.grey,
-                fontWeight: FontWeight.w500,
+                color: fg.withValues(alpha: 0.72),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.7,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -44,8 +64,8 @@ class ReportSummaryCard extends StatelessWidget {
                     value,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
+                      fontWeight: FontWeight.w800,
+                      color: fg,
                       height: 1.2,
                     ),
                     maxLines: 2,

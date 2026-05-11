@@ -17,7 +17,6 @@ class ReportsScreen extends StatelessWidget {
     final expenseProvider = context.watch<ExpenseProvider>();
     final categoryProvider = context.watch<CategoryProvider>();
 
-    // Handle empty state
     if (expenseProvider.expenses.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Reports')),
@@ -29,7 +28,6 @@ class ReportsScreen extends StatelessWidget {
       );
     }
 
-    // Get data for summary cards
     final totalToday = expenseProvider.totalToday;
     final totalThisMonth = expenseProvider.totalThisMonth;
     final expenseCount = expenseProvider.expenseCountThisMonth;
@@ -39,81 +37,124 @@ class ReportsScreen extends StatelessWidget {
         : null;
     final topCategoryName = topCategory?.name ?? 'N/A';
 
+    final width = MediaQuery.of(context).size.width;
+    final cardWidth = width > 600 ? (width - 48) / 3 : (width - 40) / 2 - 6;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Reports')),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Summary section
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width > 600
-                        ? (MediaQuery.of(context).size.width - 48) / 3
-                        : (MediaQuery.of(context).size.width - 40) / 2 - 6,
-                    height: 120,
-                    child: ReportSummaryCard(
-                      label: 'Today',
-                      value: CurrencyUtils.format(totalToday),
-                      backgroundColor: Colors.blue.shade50,
-                      textColor: Colors.blue.shade900,
-                    ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width > 600
-                        ? (MediaQuery.of(context).size.width - 48) / 3
-                        : (MediaQuery.of(context).size.width - 40) / 2 - 6,
-                    height: 120,
-                    child: ReportSummaryCard(
-                      label: 'This Month',
-                      value: CurrencyUtils.format(totalThisMonth),
-                      backgroundColor: Colors.green.shade50,
-                      textColor: Colors.green.shade900,
-                    ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width > 600
-                        ? (MediaQuery.of(context).size.width - 48) / 3
-                        : (MediaQuery.of(context).size.width - 40) / 2 - 6,
-                    height: 120,
-                    child: ReportSummaryCard(
-                      label: 'Expenses',
-                      value: expenseCount.toString(),
-                      backgroundColor: Colors.purple.shade50,
-                      textColor: Colors.purple.shade900,
-                    ),
-                  ),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width > 600
-                        ? (MediaQuery.of(context).size.width - 48) / 3
-                        : (MediaQuery.of(context).size.width - 40) / 2 - 6,
-                    height: 120,
-                    child: ReportSummaryCard(
-                      label: 'Top Category',
-                      value: topCategoryName,
-                      backgroundColor: Colors.orange.shade50,
-                      textColor: Colors.orange.shade900,
-                    ),
-                  ),
-                ],
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF040A16), Color(0xFF0B1430), Color(0xFF0F1D3D)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            image: DecorationImage(
+              image: const AssetImage('assets/icon.png'),
+              fit: BoxFit.none,
+              alignment: const Alignment(1.25, -1.25),
+              opacity: 0.03,
+              colorFilter: ColorFilter.mode(
+                Colors.white.withValues(alpha: 0.2),
+                BlendMode.srcATop,
               ),
-              const SizedBox(height: 24),
-              // Bar chart section
-              SpendingBarChartCard(expenseProvider: expenseProvider),
-              const SizedBox(height: 16),
-              // Pie chart section
-              CategoryPieChartCard(
-                expenseProvider: expenseProvider,
-                categoryProvider: categoryProvider,
-              ),
-            ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _AnimatedReveal(
+                  delayMs: 40,
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      SizedBox(
+                        width: cardWidth,
+                        height: 120,
+                        child: ReportSummaryCard(
+                          label: 'Today',
+                          value: CurrencyUtils.format(totalToday),
+                          backgroundColor: const Color(0xFF1E2F52),
+                          textColor: const Color(0xFF9BC6FF),
+                        ),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        height: 120,
+                        child: ReportSummaryCard(
+                          label: 'This Month',
+                          value: CurrencyUtils.format(totalThisMonth),
+                          backgroundColor: const Color(0xFF1D3A45),
+                          textColor: const Color(0xFF83F2D1),
+                        ),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        height: 120,
+                        child: ReportSummaryCard(
+                          label: 'Expenses',
+                          value: expenseCount.toString(),
+                          backgroundColor: const Color(0xFF2A254D),
+                          textColor: const Color(0xFFC0B6FF),
+                        ),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        height: 120,
+                        child: ReportSummaryCard(
+                          label: 'Top Category',
+                          value: topCategoryName,
+                          backgroundColor: const Color(0xFF41342A),
+                          textColor: const Color(0xFFFFD29A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _AnimatedReveal(
+                  delayMs: 140,
+                  child: SpendingBarChartCard(expenseProvider: expenseProvider),
+                ),
+                const SizedBox(height: 16),
+                _AnimatedReveal(
+                  delayMs: 260,
+                  child: CategoryPieChartCard(
+                    expenseProvider: expenseProvider,
+                    categoryProvider: categoryProvider,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedReveal extends StatelessWidget {
+  final Widget child;
+  final int delayMs;
+
+  const _AnimatedReveal({required this.child, required this.delayMs});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 700 + delayMs),
+      tween: Tween(begin: 0, end: 1),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, animatedChild) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 20),
+          child: Opacity(opacity: value.clamp(0, 1), child: animatedChild),
+        );
+      },
+      child: child,
     );
   }
 }

@@ -22,14 +22,12 @@ class SectionHeader extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
           ),
           if (actionLabel != null && actionOnPressed != null)
-            TextButton(
-              onPressed: actionOnPressed,
-              child: Text(actionLabel!),
-            ),
+            TextButton(onPressed: actionOnPressed, child: Text(actionLabel!)),
         ],
       ),
     );
